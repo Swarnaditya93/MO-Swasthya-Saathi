@@ -147,17 +147,28 @@ def webhook():
     twiml_response = MessagingResponse()
     response_text = ""
 
-    # Universal command to restart the conversation
-    if incoming_msg in ["menu", "restart", "start over", "hi", "hello", "नमस्ते", "ନମସ୍କାର"]:
-        user_sessions.pop(from_number, None)
-
+    # --- Improved Session and Command Handling ---
     session = user_sessions.get(from_number, {"lang": None, "state": "start"})
-    lang = session.get("lang", "en") # Get language early, default to 'en'
+    
+    # Hard Reset command (clears language)
+    if incoming_msg in ["hi", "hello", "नमस्ते", "ନମସ୍କାର", "restart", "start over"]:
+        session = {"lang": None, "state": "start"}
+    # Soft Reset command (goes to main menu if language is set)
+    elif incoming_msg == "menu":
+        if session.get("lang"):
+            session["state"] = "main_menu"
+        else: # If no language, 'menu' is a hard reset
+            session = {"lang": None, "state": "start"}
+            
+    lang = session.get("lang", "en") 
 
-    if session.get("state") == "start":
+    # --- State Machine ---
+    current_state = session.get("state")
+    
+    if current_state == "start":
         response_text = translations["en"]["welcome"]
         session["state"] = "lang_select"
-    elif session.get("state") == "lang_select":
+    elif current_state == "lang_select":
         if "1" in incoming_msg or "english" in incoming_msg:
             session["lang"], lang = "en", "en"
             session["state"] = "main_menu"
@@ -171,8 +182,8 @@ def webhook():
             session["state"] = "main_menu"
             response_text = translations[lang]["menu"]
         else:
-            response_text = translations["en"]["welcome"]
-    elif session.get("state") == "main_menu":
+            response_text = translations["en"]["welcome"] # Ask again if invalid input
+    elif current_state == "main_menu":
         if "1" in incoming_msg:
             response_text = translations[lang]["symptom_prompt"]
             session["state"] = "symptom_check"
@@ -183,17 +194,18 @@ def webhook():
         elif "4" in incoming_msg:
             response_text = translations[lang]["disease_prompt"]
             session["state"] = "disease_search"
-        else:
+        else: # If any other input, just show the menu again
             response_text = translations[lang]["menu"]
-    elif session.get("state") == "symptom_check":
+    elif current_state == "symptom_check":
         diagnosis_result = get_diagnosis_from_db(incoming_msg, lang)
         response_text = f"{diagnosis_result}\n\n{translations[lang]['symptom_repeat']}"
-        # Stays in the 'symptom_check' state
-    elif session.get("state") == "disease_search":
+        # Stays in the 'symptom_check' state for repeated checks
+    elif current_state == "disease_search":
         disease_info_result = get_disease_info_from_db(incoming_msg, lang)
         response_text = f"{disease_info_result}\n\n{translations[lang]['disease_repeat']}"
-        # Stays in the 'disease_search' state
+        # Stays in the 'disease_search' state for repeated checks
     
+    # Save the session and send the response
     user_sessions[from_number] = session
     twiml_response.message(response_text)
     return str(twiml_response)
