@@ -9,58 +9,71 @@ app = Flask(__name__)
 with open('database.json', 'r', encoding='utf-8') as f:
     health_data = json.load(f)
 
-# --- Keywords for different languages ---
-# These help the bot understand transliterated (Roman script) inputs
-HINDI_SYMPTOM_KEYWORDS = ['bukhar', 'khansi', 'sirdard', 'dard', 'thakan', 'ulti', 'chakkar']
-ODIA_SYMPTOM_KEYWORDS = ['jwara', 'kasa', 'mundabindha', 'jantrana', 'durbalata', 'banti', 'mundabuleiba']
+# --- Transliteration Mapping ---
+# Correctly maps Roman script words to their English symptom keyword.
+TRANSLITERATION_MAP = {
+    # Hindi
+    'bukhar': 'fever', 'khansi': 'cough', 'sirdard': 'headache', 'dard': 'pain',
+    'thakan': 'fatigue', 'ulti': 'vomiting', 'chakkar': 'dizziness',
+    # Odia
+    'jwara': 'fever', 'kasa': 'cough', 'mundabindha': 'headache', 'jantrana': 'pain',
+    'durbalata': 'weakness', 'banti': 'vomiting', 'mundabuleiba': 'dizziness'
+}
+
 GREETINGS = ["hi", "hello", "namaste", "namaskar", "kemitichanti", "kemiti achha", "नमस्ते", "ନମସ୍କାର"]
 
 def format_disease_info(disease_data):
-    """Formats the disease information into a single trilingual message."""
+    """Formats the disease information into a single trilingual message with corrected fields."""
+    # The symptom keywords are in English in the database, so we display them for all languages.
+    symptoms_list_en = ', '.join(disease_data['symptoms_en']).title()
+    
     return (
         f"*{disease_data['name_en']}*\n"
-        f"Symptoms: {', '.join(disease_data['symptoms_en']).title()}\n"
-        f"Prevention: {disease_data['prevention_en']}\n\n"
+        f"Symptoms: {symptoms_list_en}\n"
+        f"Prevention: {disease_data['prevention_en']}\n"
+        f"Treatment: {disease_data['treatment_en']}\n\n"
         
         f"*{disease_data['name_hi']}*\n"
-        f"लक्षण: {disease_data['prevention_hi']}\n"
-        f"रोकथाम: {disease_data['treatment_hi']}\n\n"
+        f"लक्षण (Symptoms): {symptoms_list_en}\n"
+        f"रोकथाम (Prevention): {disease_data['prevention_hi']}\n"
+        f"उपचार (Treatment): {disease_data['treatment_hi']}\n\n"
 
         f"*{disease_data['name_or']}*\n"
-        f"ଲକ୍ଷଣ: {disease_data['prevention_or']}\n"
-        f"ପ୍ରତିରୋଧ: {disease_data['treatment_or']}\n\n"
+        f"ଲକ୍ଷଣ (Symptoms): {symptoms_list_en}\n"
+        f"ପ୍ରତିରୋଧ (Prevention): {disease_data['prevention_or']}\n"
+        f"ଚିକିତ୍ସା (Treatment): {disease_data['treatment_or']}\n\n"
         
-        "_Please note: This is not a medical diagnosis. You should consult with a real doctor._"
+        "_Please note: This is not a medical diagnosis. Consult a doctor for accurate advice._"
     )
 
 def process_user_input(text):
-    """Analyzes user input to see if it's a disease name or a list of symptoms."""
+    """Analyzes user input to find a disease by name or by symptoms."""
     lower_text = text.lower()
     
     # --- Check 1: Direct Disease Name Match ---
-    # This is the highest priority. If a user names a disease, show its info.
     for disease_id, data in health_data.get('diseases', {}).items():
-        if (lower_text in data['name_en'].lower() or
-            lower_text in data['name_hi'].lower() or
-            lower_text in data['name_or'].lower()):
+        if (lower_text == data['name_en'].lower() or
+            lower_text == data['name_hi'].lower() or
+            lower_text == data['name_or'].lower()):
             return format_disease_info(data)
 
     # --- Check 2: Symptom Analysis ---
-    user_symptoms = set(lower_text.replace("and", "").replace(",", "").split())
+    words = set(lower_text.replace("and", "").replace(",", "").split())
     
-    # Add transliterated keywords to the user's symptoms for better matching
-    for word in user_symptoms:
-        if word in HINDI_SYMPTOM_KEYWORDS:
-            user_symptoms.update(['fever', 'cough', 'headache', 'pain', 'fatigue', 'vomiting', 'dizziness'])
-        if word in ODIA_SYMPTOM_KEYWORDS:
-             user_symptoms.update(['fever', 'cough', 'headache', 'pain', 'fatigue', 'vomiting', 'dizziness'])
+    # Convert any transliterated words to their English equivalent
+    user_symptoms_en = set()
+    for word in words:
+        if word in TRANSLITERATION_MAP:
+            user_symptoms_en.add(TRANSLITERATION_MAP[word])
+        else:
+            user_symptoms_en.add(word)
 
     best_match_disease_id = None
     max_matches = 0
 
     for disease_id, data in health_data.get('diseases', {}).items():
         disease_symptoms_en = set(data['symptoms_en'])
-        matches = len(user_symptoms.intersection(disease_symptoms_en))
+        matches = len(user_symptoms_en.intersection(disease_symptoms_en))
         
         if matches > max_matches:
             max_matches = matches
@@ -74,8 +87,8 @@ def process_user_input(text):
     # --- Check 3: If nothing matches ---
     return (
         "I'm sorry, I couldn't understand that. Please tell me your symptoms (e.g., 'fever and headache') or the name of a disease you want to know about (e.g., 'Dengue').\n\n"
-        "ମୁଁ ଦୁଃଖିତ, ମୁଁ ତାହା ବୁଝିପାରିଲି ନାହିଁ। ଦୟାକରି ମୋତେ ଆପଣଙ୍କର ଲକ୍ଷଣ (ଯେପରିକି 'ଜ୍ୱର ଏବଂ ମୁଣ୍ଡବିନ୍ଧା') କିମ୍ବା ଆପଣ ଜାଣିବାକୁ ଚାହୁଁଥିବା ରୋଗର ନାମ (ଯେପରିକି 'ଡେଙ୍ଗୁ') କୁହନ୍ତୁ।\n\n"
-        "मुझे क्षमा करें, मैं यह समझ नहीं सका। कृपया मुझे अपने लक्षण बताएं (उदाहरण: 'बुखार और सिरदर्द') या उस बीमारी का नाम बताएं जिसके बारे में आप जानना चाहते हैं (उदाहरण: 'डेंगू')।"
+        "मुझे क्षमा करें, मैं यह समझ नहीं सका। कृपया मुझे अपने लक्षण बताएं (उदाहरण: 'बुखार और सिरदर्द') या उस बीमारी का नाम बताएं जिसके बारे में आप जानना चाहते हैं (उदाहरण: 'डेंगू')।\n\n"
+        "ମୁଁ ଦୁଃଖିତ, ମୁଁ ତାହା ବୁଝିପାରିଲି ନାହିଁ। ଦୟାକରି ମୋତେ ଆପଣଙ୍କର ଲକ୍ଷଣ (ଯେପରିକି 'ଜ୍ୱର ଏବଂ ମୁଣ୍ଡବିନ୍ଧା') କିମ୍ବା ଆପଣ ଜାଣିବାକୁ ଚାହୁଁଥିବା ରୋଗର ନାମ (ଯେପରିକି 'ଡେଙ୍ଗୁ') କୁହନ୍ତୁ।"
     )
 
 @app.route('/webhook', methods=['POST'])
@@ -85,8 +98,10 @@ def webhook():
     twiml_response = MessagingResponse()
     response_text = ""
 
-    # Check if the message is a greeting
-    if incoming_msg.lower() in GREETINGS:
+    if not incoming_msg:
+        # Handle empty messages gracefully
+        response_text = "Please send a message."
+    elif incoming_msg.lower() in GREETINGS:
         response_text = (
             "Hello! I am MO Swasthya Saathi 🙏\n"
             "You can tell me your symptoms or ask about a specific disease.\n\n"
@@ -96,7 +111,6 @@ def webhook():
             "ଆପଣ ମୋତେ ଆପଣଙ୍କର ଲକ୍ଷଣ କହିପାରିବେ କିମ୍ବା ଏକ ନିର୍ଦ୍ଦିଷ୍ଟ ରୋଗ ବିଷୟରେ ପଚାରିପାରିବେ।"
         )
     else:
-        # If not a greeting, process the input for symptoms or disease name
         response_text = process_user_input(incoming_msg)
     
     twiml_response.message(response_text)
