@@ -1,0 +1,38 @@
+{
+  "diseases": {
+    "common_cold": {
+      "name_or": "ସାଧାରଣ ଥଣ୍ଡା",
+      "symptoms_en": ["nose", "sneezing", "sore", "throat", "cough", "headache"],
+      "prevention_en": "Wash hands frequently, avoid touching your face, and get enough rest.",
+      "prevention_or": "ବାରମ୍ବାର ହାତ ଧୋଇବା, ମୁହଁକୁ ଛୁଇଁବାରୁ ଦୂରେଇ ରହିବା, ଏବଂ ପର୍ଯ୍ୟାପ୍ତ ବିଶ୍ରାମ ନେବା।",
+      "treatment_en": "Rest, drink fluids, and use over-the-counter medications for symptom relief.",
+      "treatment_or": "ବିଶ୍ରାମ, ତରଳ ପଦାର୍ଥ ପିଇବା, ଏବଂ ଲକ୍ଷଣରୁ ମୁକ୍ତି ପାଇଁ ବିନା ପ୍ରେସକ୍ରିପସନରେ ମିଳୁଥିବା ଔଷଧ ବ୍ୟବହାର କରିବା।"
+    },
+    "dengue": {
+      "name_or": "ଡେଙ୍ଗୁ",
+      "symptoms_en": ["fever", "headache", "eyes", "joint", "muscle", "pain", "rash", "nausea"],
+      "prevention_en": "Eliminate mosquito breeding sites like stagnant water. Use mosquito repellent.",
+      "prevention_or": "ଜମିଥିବା ପାଣି ପରି ମଶା ପ୍ରଜନନ ସ୍ଥାନଗୁଡ଼ିକୁ ନଷ୍ଟ କରିବା। ମଶା ଘଉଡ଼ାଇବା ପାଇଁ ତରଳ ବ୍ୟବହାର କରିବା।",
+      "treatment_en": "Consult a doctor immediately. Treatment includes fluid intake and pain relievers.",
+      "treatment_or": "ତୁରନ୍ତ ଡାକ୍ତରଙ୍କ ସହିତ ପରାମର୍ଶ କରିବା। ଚିକିତ୍ସାରେ ତରଳ ପଦାର୍ଥ ଗ୍ରହଣ ଏବଂ ଯନ୍ତ୍ରଣା ନିବାରକ ଔଷଧ ଅନ୍ତର୍ଭୁକ୍ତ।"
+    },
+    "malaria": {
+      "name_or": "ମ୍ୟାଲେରିଆ",
+      "symptoms_en": ["fever", "chills", "headache", "nausea", "vomiting", "muscle", "pain", "sweating"],
+      "prevention_en": "Use mosquito nets, wear protective clothing, and use insect repellent.",
+      "prevention_or": "ମଶାରୀ ବ୍ୟବହାର କରିବା, ସୁରକ୍ଷାକାରୀ ପୋଷାକ ପିନ୍ଧିବା, ଏବଂ କୀଟନାଶକ ବ୍ୟବହାର କରିବା।",
+      "treatment_en": "Requires a medical diagnosis and prescription antimalarial drugs.",
+      "treatment_or": "ଏକ ଡାକ୍ତରୀ ନିରାକରଣ ଏବଂ ପ୍ରେସକ୍ରିପସନରେ ମିଳୁଥିବା ମ୍ୟାଲେରିଆ ନିରୋଧୀ ଔଷଧ ଆବଶ୍ୟକ।"
+    },
+    "typhoid": {
+      "name_or": "ଟାଇଫଏଡ୍",
+      "symptoms_en": ["fever", "weakness", "stomach", "pain", "headache", "appetite", "rash"],
+      "prevention_en": "Get vaccinated. Avoid risky food and drinks. Drink only bottled or boiled water.",
+      "prevention_or": "ଟୀକାକରଣ କରାଇବା। ବିପଦପୂର୍ଣ୍ଣ ଖାଦ୍ୟ ଏବଂ ପାନୀୟରୁ ଦୂରେଇ ରହିବା। କେବଳ ବୋତଲ କିମ୍ବା ଫୁଟା ପାଣି ପିଇବା।",
+      "treatment_en": "Requires antibiotic therapy prescribed by a doctor.",
+      "treatment_or": "ଡାକ୍ତରଙ୍କ ଦ୍ୱାରା ପ୍ରେସକ୍ରାଇବ୍ କରାଯାଇଥିବା ଆଣ୍ଟିବାୟୋଟିକ୍ ଥେରାପି ଆବଶ୍ୟକ।"
+    }
+  },
+  "vaccination_schedule_en": "For children, key vaccines include BCG, Polio, DPT, and Measles within the first year. Please consult a local health clinic for a detailed schedule based on your child's age.",
+  "vaccination_schedule_or": "ଶିଶୁମାନଙ୍କ ପାଇଁ, ପ୍ରଥମ ବର୍ଷ ମଧ୍ୟରେ BCG, ପୋଲିଓ, DPT, ଏବଂ ମିଳିମିଳା ପରି ମୁଖ୍ୟ ଟୀକା ଅନ୍ତର୍ଭୁକ୍ତ। ଆପଣଙ୍କ ଶିଶୁର ବୟସ ଅନୁଯାୟୀ ଏକ ବିସ୍ତୃତ ସୂଚୀ ପାଇଁ ସ୍ଥାନୀୟ ସ୍ୱାସ୍ଥ୍ୟ କ୍ଲିନିକରେ ପରାମର୍ଶ କରନ୍ତୁ।"
+}
