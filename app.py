@@ -146,66 +146,80 @@ def webhook():
     
     twiml_response = MessagingResponse()
     response_text = ""
-
-    # --- Improved Session and Command Handling ---
+    
     session = user_sessions.get(from_number, {"lang": None, "state": "start"})
     
-    # Hard Reset command (clears language)
-    if incoming_msg in ["hi", "hello", "नमस्ते", "ନମସ୍କାର", "restart", "start over"]:
+    # --- State and Command Processing ---
+    
+    current_state = session.get("state")
+    
+    # Universal command: Hard reset to the very beginning
+    if incoming_msg in ["hi", "hello", "नमस्ते", "ନମସ୍କାର", "restart"]:
         session = {"lang": None, "state": "start"}
-    # Soft Reset command (goes to main menu if language is set)
+        current_state = "start"
+        
+    # Universal command: Go back to the main menu if a language has been chosen
     elif incoming_msg == "menu":
         if session.get("lang"):
             session["state"] = "main_menu"
-        else: # If no language, 'menu' is a hard reset
+            current_state = "main_menu"
+        else: # If no language is set, 'menu' acts as a hard reset
             session = {"lang": None, "state": "start"}
+            current_state = "start"
             
-    lang = session.get("lang", "en") 
-
-    # --- State Machine ---
-    current_state = session.get("state")
+    # --- State Machine Logic ---
     
     if current_state == "start":
         response_text = translations["en"]["welcome"]
         session["state"] = "lang_select"
+        
     elif current_state == "lang_select":
+        lang_chosen = None
         if "1" in incoming_msg or "english" in incoming_msg:
-            session["lang"], lang = "en", "en"
-            session["state"] = "main_menu"
-            response_text = translations[lang]["menu"]
+            lang_chosen = "en"
         elif "2" in incoming_msg or "hindi" in incoming_msg or "हिंदी" in incoming_msg:
-            session["lang"], lang = "hi", "hi"
-            session["state"] = "main_menu"
-            response_text = translations[lang]["menu"]
+            lang_chosen = "hi"
         elif "3" in incoming_msg or "odia" in incoming_msg or "ଓଡ଼ିଆ" in incoming_msg:
-            session["lang"], lang = "or", "or"
+            lang_chosen = "or"
+        
+        if lang_chosen:
+            session["lang"] = lang_chosen
             session["state"] = "main_menu"
-            response_text = translations[lang]["menu"]
+            response_text = translations[lang_chosen]["menu"] # Explicitly send menu
         else:
-            response_text = translations["en"]["welcome"] # Ask again if invalid input
+            response_text = translations["en"]["welcome"] # Ask again
+            
     elif current_state == "main_menu":
+        lang = session.get("lang", "en")
         if "1" in incoming_msg:
-            response_text = translations[lang]["symptom_prompt"]
             session["state"] = "symptom_check"
+            response_text = translations[lang]["symptom_prompt"]
         elif "2" in incoming_msg:
             response_text = translations[lang]["alert_info"]
+            # Stays in main_menu state after showing info
         elif "3" in incoming_msg:
             response_text = translations[lang]["vaccine_info"]
+            # Stays in main_menu state after showing info
         elif "4" in incoming_msg:
-            response_text = translations[lang]["disease_prompt"]
             session["state"] = "disease_search"
-        else: # If any other input, just show the menu again
+            response_text = translations[lang]["disease_prompt"]
+        else:
+            # If input is invalid, just show the menu again
             response_text = translations[lang]["menu"]
+            
     elif current_state == "symptom_check":
+        lang = session.get("lang", "en")
         diagnosis_result = get_diagnosis_from_db(incoming_msg, lang)
         response_text = f"{diagnosis_result}\n\n{translations[lang]['symptom_repeat']}"
-        # Stays in the 'symptom_check' state for repeated checks
+        # State remains 'symptom_check' for another query
+        
     elif current_state == "disease_search":
+        lang = session.get("lang", "en")
         disease_info_result = get_disease_info_from_db(incoming_msg, lang)
         response_text = f"{disease_info_result}\n\n{translations[lang]['disease_repeat']}"
-        # Stays in the 'disease_search' state for repeated checks
-    
-    # Save the session and send the response
+        # State remains 'disease_search' for another query
+        
+    # Save the updated session and send the response
     user_sessions[from_number] = session
     twiml_response.message(response_text)
     return str(twiml_response)
