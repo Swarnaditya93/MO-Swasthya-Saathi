@@ -6,13 +6,19 @@ from twilio.twiml.messaging_response import MessagingResponse
 app = Flask(__name__)
 
 # --- Load the health database ---
-with open('database.json', 'r', encoding='utf-8') as f:
-    health_data = json.load(f)
+try:
+    with open('database.json', 'r', encoding='utf-8') as f:
+        health_data = json.load(f)
+except FileNotFoundError:
+    print("ERROR: database.json not found. Please create the file.")
+    health_data = {"diseases": {}}
+
 
 # In-memory session storage for multi-turn conversation
 user_sessions = {}
 
 # --- Trilingual Translations ---
+# This section remains unchanged from your original code
 translations = {
     "en": {
         "welcome": "Hello! I am MO Swasthya Saathi 🙏\nPlease select your language:\n1. English\n2. हिंदी (Hindi)\n3. ଓଡ଼ିଆ (Odia)",
@@ -58,42 +64,54 @@ translations = {
     }
 }
 
+
 def get_diagnosis_from_db(symptoms_text, lang):
-    """Diagnose symptoms based on keywords from the local JSON database."""
+    """
+    Diagnose symptoms based on multi-lingual keywords from the JSON database.
+    This new version uses the 'symptoms_keywords' list for matching.
+    """
+    # Clean and split the user's input into a set of words
     user_symptoms = set(symptoms_text.lower().replace("and", "").replace(",", "").split())
     
-    best_match = None
-    max_matches = 0
-
     if not user_symptoms:
         return translations[lang]['symptom_prompt']
 
+    best_match = None
+    max_matches = 0
+
+    # Iterate through each disease in the database
     for disease, data in health_data.get('diseases', {}).items():
-        disease_symptoms = set(data['symptoms_en'])
-        matches = len(user_symptoms.intersection(disease_symptoms))
+        # Get the comprehensive list of keywords for this disease
+        disease_keywords = set(data.get('symptoms_keywords', []))
         
+        # Find how many user symptoms match the disease's keywords
+        matches = len(user_symptoms.intersection(disease_keywords))
+        
+        # If this disease is a better match than the previous best, update it
         if matches > max_matches:
             max_matches = matches
             best_match = disease
 
+    # If we found at least one matching symptom
     if max_matches > 0:
         disease_info = health_data['diseases'][best_match]
         
+        # Format the response in the user's chosen language
         if lang == 'hi':
             response = (
-                f"लक्षणों के आधार पर, संभावित समस्या '{disease_info['name_hi']}' हो सकती है।\n\n"
+                f"आपके लक्षणों के आधार पर, संभावित समस्या '{disease_info['name_hi']}' हो सकती है।\n\n"
                 f"*रोकथाम*: {disease_info['prevention_hi']}\n"
                 f"*उपचार*: {disease_info['treatment_hi']}\n\n"
                 f"{translations[lang]['consult_doctor']}"
             )
         elif lang == 'or':
             response = (
-                f"ଲକ୍ଷଣ ଅନୁଯାୟୀ, ଆପଣଙ୍କୁ '{disease_info['name_or']}' ହୋଇପାରେ।\n\n"
+                f"ଆପଣଙ୍କ ଲକ୍ଷଣ ଅନୁଯାୟୀ, ସମ୍ଭାବିତ ସମସ୍ୟା '{disease_info['name_or']}' ହୋଇପାରେ।\n\n"
                 f"*ପ୍ରତିରୋଧ*: {disease_info['prevention_or']}\n"
                 f"*ଚିକିତ୍ସା*: {disease_info['treatment_or']}\n\n"
                 f"{translations[lang]['consult_doctor']}"
             )
-        else:
+        else: # Default to English
             response = (
                 f"Based on your symptoms, the potential issue could be '{disease_info['name_en']}'.\n\n"
                 f"*Prevention*: {disease_info['prevention_en']}\n"
@@ -102,17 +120,22 @@ def get_diagnosis_from_db(symptoms_text, lang):
             )
         return response
     
+    # If no symptoms matched anything
     return translations[lang]['no_diagnosis']
 
 def get_disease_info_from_db(disease_name, lang):
-    """Search for a disease by name and return its details."""
+    """
+    Search for a disease by name using multi-lingual search terms.
+    This new version checks the user's input against the 'search_terms' list.
+    """
     search_term = disease_name.lower().strip()
+    
+    # Iterate through each disease in the database
     for disease, data in health_data.get('diseases', {}).items():
-        # Check against all language names for a match
-        if (search_term in data['name_en'].lower() or 
-            search_term in data['name_hi'].lower() or 
-            search_term in data['name_or'].lower()):
+        # Check if the user's input matches any of the search terms for this disease
+        if search_term in data.get('search_terms', []):
             
+            # Format the response in the user's chosen language
             if lang == 'hi':
                 response = (
                     f"*{data['name_hi']}*\n\n"
@@ -135,7 +158,8 @@ def get_disease_info_from_db(disease_name, lang):
                     f"*Treatment*: {data['treatment_en']}"
                 )
             return response
-    
+            
+    # If no disease matched the search term
     return translations[lang]['disease_not_found']
 
 @app.route('/webhook', methods=['POST'])
@@ -156,75 +180,3 @@ def webhook():
     # Universal command: Hard reset to the very beginning
     if incoming_msg in ["hi", "hello", "नमस्ते", "ନମସ୍କାର", "restart"]:
         session = {"lang": None, "state": "start"}
-        current_state = "start"
-        
-    # Universal command: Go back to the main menu if a language has been chosen
-    elif incoming_msg == "menu":
-        if session.get("lang"):
-            session["state"] = "main_menu"
-            current_state = "main_menu"
-        else: # If no language is set, 'menu' acts as a hard reset
-            session = {"lang": None, "state": "start"}
-            current_state = "start"
-            
-    # --- State Machine Logic ---
-    
-    if current_state == "start":
-        response_text = translations["en"]["welcome"]
-        session["state"] = "lang_select"
-        
-    elif current_state == "lang_select":
-        lang_chosen = None
-        if "1" in incoming_msg or "english" in incoming_msg:
-            lang_chosen = "en"
-        elif "2" in incoming_msg or "hindi" in incoming_msg or "हिंदी" in incoming_msg:
-            lang_chosen = "hi"
-        elif "3" in incoming_msg or "odia" in incoming_msg or "ଓଡ଼ିଆ" in incoming_msg:
-            lang_chosen = "or"
-        
-        if lang_chosen:
-            session["lang"] = lang_chosen
-            session["state"] = "main_menu"
-            response_text = translations[lang_chosen]["menu"] # Explicitly send menu
-        else:
-            response_text = translations["en"]["welcome"] # Ask again
-            
-    elif current_state == "main_menu":
-        lang = session.get("lang", "en")
-        if "1" in incoming_msg:
-            session["state"] = "symptom_check"
-            response_text = translations[lang]["symptom_prompt"]
-        elif "2" in incoming_msg:
-            response_text = translations[lang]["alert_info"]
-            # Stays in main_menu state after showing info
-        elif "3" in incoming_msg:
-            response_text = translations[lang]["vaccine_info"]
-            # Stays in main_menu state after showing info
-        elif "4" in incoming_msg:
-            session["state"] = "disease_search"
-            response_text = translations[lang]["disease_prompt"]
-        else:
-            # If input is invalid, just show the menu again
-            response_text = translations[lang]["menu"]
-            
-    elif current_state == "symptom_check":
-        lang = session.get("lang", "en")
-        diagnosis_result = get_diagnosis_from_db(incoming_msg, lang)
-        response_text = f"{diagnosis_result}\n\n{translations[lang]['symptom_repeat']}"
-        # State remains 'symptom_check' for another query
-        
-    elif current_state == "disease_search":
-        lang = session.get("lang", "en")
-        disease_info_result = get_disease_info_from_db(incoming_msg, lang)
-        response_text = f"{disease_info_result}\n\n{translations[lang]['disease_repeat']}"
-        # State remains 'disease_search' for another query
-        
-    # Save the updated session and send the response
-    user_sessions[from_number] = session
-    twiml_response.message(response_text)
-    return str(twiml_response)
-
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
-
